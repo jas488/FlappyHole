@@ -1,6 +1,4 @@
-===
-      Flappy Hole
-==========
+### Flappy Hole ###
 
 Author: jas488
 
