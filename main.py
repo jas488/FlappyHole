@@ -1,4 +1,4 @@
-import pygame, sys, os, math, binascii, webbrowser, struct
+import pygame, sys, os, math, binascii, webbrowser, struct, random
 from pygame.locals import *
 
 # Initialize pygame
@@ -10,11 +10,11 @@ sounds = {
 	"flap": pygame.mixer.Sound("assets/sounds/flap.mp3"),
 	"hit": pygame.mixer.Sound("assets/sounds/hit.mp3"),
 	"fall": pygame.mixer.Sound("assets/sounds/fall.mp3"),
+	"hitnfall": pygame.mixer.Sound("assets/sounds/hitnfall.mp3"),
 	"swoosh": pygame.mixer.Sound("assets/sounds/swoosh.mp3")
 }
 
-
-# States:
+# Game States:
 # 0 - Main Screen
 # 1 - Get Ready
 # 2 - Playing
@@ -23,12 +23,11 @@ sounds = {
 # 5 - Settings
 game_state = 0
 
-
 def write_bin_file(file: str, hex_data: str):
 	# Convert string to data
 	bin_data = binascii.unhexlify(hex_data.replace(' ', ''))
 
-	# Write to a file
+	# Write data to a file
 	with open(file, "wb") as f:
 		f.write(bin_data)
 
@@ -44,20 +43,21 @@ def reset_sett():
 
 def reload_sett():
 	global hi_score, night_mode, sfx
+	
 	result = read_bin_file('settings.dat')
+	
 	hi_score = int(result[16:24], 16)
 	night_mode = bool(int(result[28:30]))
 	sfx = bool(int(result[36:38]))
 
-# sett.bin format:
-# 53 45 54 54 00 00 48 49 00 00 4E 4D 00 46 58 00
-# S  E  T  T  .  .  H  I  0  0  N  M  0  F  X  0
-# Settings\FF\FF, HiScore 16x0000, Night Mode: False, SFX: False
+# sett.dat format:
+# 53 45 54 54 00 00 48 49 00 00 00 00 4E 4D 00 53 46 58 00
+# S  E  T  T  .  .  H  I  0  0  0  0  N  M  0  F  X  0
+# Settings\00\00, HiScore 16x0000, Night Mode: False, SFX: False
 
+# Max High Score: 2^32 - 1 (4 294 967 295)	
 
-#game_settings = 
-
-# Engine Class
+# Engine
 class Engine():
 	def __init__(self):
 		self.clock = pygame.time.Clock()
@@ -335,6 +335,8 @@ class Flappy(pygame.sprite.Sprite):
 		
 		self.y_vel = 0 # Y Velocity
 		
+		self.ded_played = False
+		
 		self.gravity = -0.4
 		
 		self.score = 0
@@ -372,6 +374,9 @@ class Flappy(pygame.sprite.Sprite):
 			while self.rect.colliderect(self.pipe_rect) and not self.rect.colliderect(self.pipe_mrect) or self.rect.y >= 376:
 				self.rect.y -= 1
 			game_state = 3
+			if not self.ded_played:
+				sounds['hit'].play()
+				self.ded_played = True
 		
 		#print(str(round(eng.clock.get_fps() * 100) / 100) + " | " + str(round(self.y_vel * 10) / 10) + " | " + str(eng.a_state))
 
@@ -401,7 +406,7 @@ class GameSystem():
 			self.gnd_x = 0
 			
 		if self.pipe_x <= -win_params['width'] - 52:
-			self.pipe_x = 0
+			self.pipe_x = 0 + random.randint(0, 24)
 
 	def render(self):
 		global game_state, hi_score, night_mode, sfx
@@ -422,7 +427,7 @@ class GameSystem():
 		
 		# Draw Flappy
 		if 0 <= game_state <= 4:
-			self.window.blit(self.flappy.image, (self.flappy.rect.topleft[0] + eng.x_center, self.flappy.rect.topleft[1] + eng.y_center))
+			self.window.blit(pygame.transform.rotate(self.flappy.image, -4 * self.flappy.y_vel), (self.flappy.rect.topleft[0] + eng.x_center, self.flappy.rect.topleft[1] + eng.y_center))
 
 		# Draw Pipes
 		self.window.blit(pygame.transform.flip(eng.imgload('assets/textures/pipe.png'), False, True), (eng.x_center + self.pipe_x + win_params['width'], eng.y_center))
@@ -460,6 +465,8 @@ class GameSystem():
 						sounds['swoosh'].play()
 					self.flappy.rect.x = 128
 					self.flappy.rect.y = 256
+					self.flappy.ded_played = False
+					self.flappy.score = 0
 					self.bg_x = 0
 					self.gnd_x = 0
 					self.pipe_x = 0
@@ -476,6 +483,9 @@ class GameSystem():
 			else:
 				if pygame.mouse.get_pressed()[0]:
 					game_state = 0
+					self.flappy.score = 0
+					self.flappy.ded_played = False
+					self.pipe_x = 0
 					if sfx:
 						sounds['swoosh'].play()
 				window.blit(eng.imgload('assets/textures/gui_buttons.png', (0, 0, 40, 13)), (eng.x_center + win_params['width'] // 2 + 4, eng.y_center + 334))
