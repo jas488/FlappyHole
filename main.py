@@ -10,7 +10,6 @@ sounds = {
 	"flap": pygame.mixer.Sound("assets/sounds/flap.mp3"),
 	"hit": pygame.mixer.Sound("assets/sounds/hit.mp3"),
 	"fall": pygame.mixer.Sound("assets/sounds/fall.mp3"),
-	"hitnfall": pygame.mixer.Sound("assets/sounds/hitnfall.mp3"),
 	"swoosh": pygame.mixer.Sound("assets/sounds/swoosh.mp3")
 }
 
